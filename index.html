@@ -46,50 +46,59 @@
           </div>
         </div>
         <figure class="hero__visual reveal reveal--delay">
-          <div class="stitch-studio parallax-item" data-depth="4" role="group" aria-label="Interactieve naai visual">
-            <div class="stitch-studio__header">
-              <p class="stitch-studio__title">Atelier Interactie</p>
-              <div class="stitch-studio__controls">
-                <label>
-                  Patroon
-                  <select id="hero-pattern-select">
-                    <option value="hem">Rechte zoom</option>
-                    <option value="curve">S-curve</option>
-                    <option value="corner">Hoekafwerking</option>
-                  </select>
-                </label>
-                <label>
-                  Draad
-                  <select id="hero-thread-select">
-                    <option value="silk">Zijde</option>
-                    <option value="cotton">Katoen</option>
-                    <option value="technical">Technisch</option>
-                    <option value="heavy">Zwaar</option>
-                  </select>
-                </label>
-                <label class="stitch-studio__assist">
-                  Assist
-                  <button id="hero-assist-toggle" type="button" aria-pressed="false">Uit</button>
-                </label>
-              </div>
+          <div class="hero-assessment parallax-item" data-depth="3" role="group" aria-label="Herstel-inschatting">
+            <div class="hero-assessment__header">
+              <p class="hero-assessment__kicker">Eerste Inschatting</p>
+              <p class="hero-assessment__hint">Binnen enkele seconden een professionele richting.</p>
             </div>
-            <canvas id="hero-stitch-canvas" aria-label="Interactieve stof om op te naaien" role="img"></canvas>
-            <div class="stitch-studio__complete-card" id="hero-complete-card" aria-live="polite">
-              <p class="stitch-studio__complete-label">Afwerking</p>
-              <p class="stitch-studio__complete-score" id="hero-complete-score">94%</p>
-              <p class="stitch-studio__complete-note" id="hero-complete-note">Couture-precisie bereikt.</p>
+            <form id="hero-assessment-form" class="hero-assessment__form">
+              <label>
+                Kledingstuk
+                <select name="garment" required>
+                  <option value="">Selecteer</option>
+                  <option value="colbert">Colbert / blazer</option>
+                  <option value="broek">Pantalon / jeans</option>
+                  <option value="jurk">Jurk / rok</option>
+                  <option value="motor">Motorkleding</option>
+                  <option value="overig">Overig</option>
+                </select>
+              </label>
+              <label>
+                Materiaal
+                <select name="material" required>
+                  <option value="">Selecteer</option>
+                  <option value="wol">Wol / kasjmier</option>
+                  <option value="zijde">Zijde / satijn</option>
+                  <option value="leer">Leer</option>
+                  <option value="technisch">Technische stof</option>
+                  <option value="denim">Denim / katoen</option>
+                </select>
+              </label>
+              <label>
+                Type herstel
+                <select name="repair" required>
+                  <option value="">Selecteer</option>
+                  <option value="scheur">Scheur / beschadiging</option>
+                  <option value="rits">Rits / sluiting</option>
+                  <option value="pasvorm">Pasvorm aanpassen</option>
+                  <option value="naad">Naad / voering</option>
+                  <option value="specialistisch">Specialistisch herstel</option>
+                </select>
+              </label>
+              <label>
+                Gewenste snelheid
+                <select name="urgency" required>
+                  <option value="">Selecteer</option>
+                  <option value="standaard">Standaard planning</option>
+                  <option value="spoed">Spoed indien mogelijk</option>
+                </select>
+              </label>
+              <button class="hero-assessment__submit" type="submit">Inschatting tonen</button>
+            </form>
+            <div id="hero-assessment-result" class="hero-assessment__result" aria-live="polite">
+              Selecteer uw situatie voor een eerste professionele inschatting.
             </div>
-            <div class="stitch-studio__footer">
-              <div class="stitch-studio__meta">
-                <p class="stitch-studio__count">Steken: <span id="hero-stitch-count">0</span></p>
-                <p class="stitch-studio__score">Precisie: <span id="hero-stitch-score">100%</span></p>
-                <p class="stitch-studio__feedback" id="hero-stitch-feedback">Volg de gidslijn voor couture-precisie.</p>
-              </div>
-              <div class="stitch-studio__actions">
-                <button id="hero-stitch-undo" class="stitch-studio__reset" type="button">Undo</button>
-                <button id="hero-stitch-reset" class="stitch-studio__reset" type="button">Opnieuw</button>
-              </div>
-            </div>
+            <a id="hero-assessment-cta" class="hero-assessment__cta btn btn--ghost" href="mailto:info@dezilverennaald.nl?subject=Aanvraag%20herstel-inschatting">Vraag een beoordeling aan</a>
           </div>
         </figure>
       </div>

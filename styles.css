@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #f5f1e8;
   --bg-soft: #f9f6ef;
   --text: #2a2a2a;
@@ -441,6 +441,90 @@ a {
   box-shadow: 0 0 0 1px rgba(214, 198, 165, 0.55), var(--shadow-deep);
 }
 
+.hero-assessment {
+  width: min(100%, 520px);
+  margin-inline: auto;
+  border: 1px solid rgba(28, 28, 28, 0.14);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at 18% 15%, rgba(255, 255, 255, 0.34), transparent 35%),
+    linear-gradient(160deg, #e8ddcd, #d7c5ae 45%, #c2ad93);
+  box-shadow: var(--shadow-deep);
+}
+
+.hero-assessment__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 1rem;
+}
+
+.hero-assessment__kicker {
+  margin: 0;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+}
+
+.hero-assessment__hint {
+  margin: 0;
+  font-size: 0.79rem;
+  color: rgba(58, 42, 30, 0.88);
+}
+
+.hero-assessment__form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.hero-assessment__form label {
+  display: grid;
+  gap: 0.26rem;
+  font-size: 0.69rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(58, 42, 30, 0.86);
+}
+
+.hero-assessment__form select {
+  min-height: 34px;
+  border: 1px solid rgba(28, 28, 28, 0.2);
+  background: rgba(248, 241, 229, 0.9);
+  font-size: 0.82rem;
+  color: var(--ink);
+  padding: 0 0.45rem;
+}
+
+.hero-assessment__submit {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  border: 1px solid rgba(28, 28, 28, 0.26);
+  background: linear-gradient(130deg, #2a2622, #3a332d);
+  color: #f8f2e8;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.hero-assessment__result {
+  min-height: 64px;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid rgba(28, 28, 28, 0.18);
+  background: rgba(248, 241, 229, 0.72);
+  font-size: 0.86rem;
+  color: rgba(42, 42, 42, 0.9);
+  margin-bottom: 0.8rem;
+}
+
+.hero-assessment__cta {
+  width: 100%;
+}
+
 .stitch-studio__reset:hover,
 .stitch-studio__reset:focus-visible {
   transform: translateY(-1px);
@@ -837,6 +921,16 @@ a {
     justify-content: flex-end;
   }
 
+  .hero-assessment__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .hero-assessment__form {
+    grid-template-columns: 1fr;
+  }
+
   .services-layout {
     grid-template-columns: 1fr;
   }
@@ -904,6 +998,10 @@ a {
 
   .stitch-studio__reset {
     flex: 1;
+  }
+
+  .hero-assessment {
+    padding: 1rem;
   }
 }
 

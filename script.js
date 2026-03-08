@@ -49,614 +49,79 @@ function initAtmosphere() {
   });
 }
 
-function initHeroStitchStudio() {
-  const section = document.querySelector("#hero");
-  const canvas = document.querySelector("#hero-stitch-canvas");
-  const resetButton = document.querySelector("#hero-stitch-reset");
-  const undoButton = document.querySelector("#hero-stitch-undo");
-  const countNode = document.querySelector("#hero-stitch-count");
-  const scoreNode = document.querySelector("#hero-stitch-score");
-  const feedbackNode = document.querySelector("#hero-stitch-feedback");
-  const patternSelect = document.querySelector("#hero-pattern-select");
-  const threadSelect = document.querySelector("#hero-thread-select");
-  const assistToggle = document.querySelector("#hero-assist-toggle");
-  const completeCard = document.querySelector("#hero-complete-card");
-  const completeScore = document.querySelector("#hero-complete-score");
-  const completeNote = document.querySelector("#hero-complete-note");
-  const studio = document.querySelector(".stitch-studio");
+function initHeroAssessment() {
+  const form = document.querySelector("#hero-assessment-form");
+  const result = document.querySelector("#hero-assessment-result");
+  const cta = document.querySelector("#hero-assessment-cta");
 
-  if (!section || !canvas || !resetButton || !undoButton || !countNode || !scoreNode || !feedbackNode || !patternSelect || !threadSelect || !assistToggle || !completeCard || !completeScore || !completeNote || !studio) return;
+  if (!form || !result || !cta) return;
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const dprMax = 2;
-  let width = 0;
-  let height = 0;
-  let running = false;
-  let raf = 0;
-  let pointerDown = false;
-  let points = [];
-  let needle = { x: 0, y: 0, tx: 0, ty: 0, angle: 0, depth: 0 };
-  let fabricRect = { x: 0, y: 0, w: 0, h: 0 };
-  let glow = 0;
-  let guidePath = [];
-  let guideLength = 0;
-  let currentPattern = "hem";
-  let currentThread = "silk";
-  let precision = 100;
-  let isComplete = false;
-  let completePulse = 0;
-  let assistEnabled = false;
-  let feedbackKey = "";
-  let feedbackTimer = 0;
-
-  const threadModes = {
-    silk: { color: "#ddd4c8", shine: "rgba(255, 255, 255, 0.75)", shadow: "rgba(26, 22, 19, 0.26)", thickness: 2.2, stitchLen: 10, inertia: 0.22 },
-    cotton: { color: "#d1c7b7", shine: "rgba(250, 248, 242, 0.62)", shadow: "rgba(24, 22, 18, 0.3)", thickness: 2.5, stitchLen: 11, inertia: 0.2 },
-    technical: { color: "#bcc3cc", shine: "rgba(240, 244, 255, 0.6)", shadow: "rgba(18, 22, 30, 0.35)", thickness: 2.35, stitchLen: 9, inertia: 0.19 },
-    heavy: { color: "#c2b29e", shine: "rgba(242, 230, 215, 0.5)", shadow: "rgba(22, 16, 13, 0.38)", thickness: 2.9, stitchLen: 13, inertia: 0.16 },
+  const garmentScore = {
+    colbert: 2,
+    broek: 1,
+    jurk: 2,
+    motor: 3,
+    overig: 1,
   };
 
-  const patternLabels = {
-    hem: "Rechte zoom",
-    curve: "S-curve",
-    corner: "Hoekafwerking",
+  const materialScore = {
+    wol: 2,
+    zijde: 3,
+    leer: 3,
+    technisch: 3,
+    denim: 1,
   };
 
-  function updateCount() {
-    countNode.textContent = String(Math.max(0, points.length - 1));
+  const repairScore = {
+    scheur: 2,
+    rits: 1,
+    pasvorm: 2,
+    naad: 1,
+    specialistisch: 3,
+  };
+
+  const urgencyScore = {
+    standaard: 0,
+    spoed: 1,
+  };
+
+  function encodeQuery(values) {
+    const subject = "Aanvraag herstel-inschatting";
+    const body = `Kledingstuk: ${values.garment}%0D%0AMateriaal: ${values.material}%0D%0AType herstel: ${values.repair}%0D%0AUrgentie: ${values.urgency}`;
+    return `mailto:info@dezilverennaald.nl?subject=${encodeURIComponent(subject)}&body=${body}`;
   }
 
-  function updateScore() {
-    scoreNode.textContent = `${Math.round(precision)}%`;
-  }
-
-  function setFeedback(text) {
-    feedbackNode.textContent = text;
-  }
-
-  function setFeedbackDebounced(key, text) {
-    if (feedbackKey === key) return;
-    feedbackKey = key;
-    window.clearTimeout(feedbackTimer);
-    feedbackTimer = window.setTimeout(() => {
-      setFeedback(text);
-    }, 120);
-  }
-
-  function buildGuidePath() {
-    const path = [];
-    const steps = 56;
-    for (let i = 0; i <= steps; i += 1) {
-      const t = i / steps;
-      if (currentPattern === "hem") {
-        const x = fabricRect.x + fabricRect.w * (0.14 + 0.72 * t);
-        const y = fabricRect.y + fabricRect.h * 0.52;
-        path.push({ x, y });
-      } else if (currentPattern === "curve") {
-        const x = fabricRect.x + fabricRect.w * (0.14 + 0.72 * t);
-        const y = fabricRect.y + fabricRect.h * (0.52 + Math.sin(t * Math.PI * 2) * 0.1);
-        path.push({ x, y });
-      } else {
-        const split = 0.52;
-        if (t <= split) {
-          const local = t / split;
-          const x = fabricRect.x + fabricRect.w * (0.18 + 0.34 * local);
-          const y = fabricRect.y + fabricRect.h * (0.76 - 0.48 * local);
-          path.push({ x, y });
-        } else {
-          const local = (t - split) / (1 - split);
-          const x = fabricRect.x + fabricRect.w * (0.52 + 0.3 * local);
-          const y = fabricRect.y + fabricRect.h * (0.28 + 0.34 * local);
-          path.push({ x, y });
-        }
-      }
-    }
-    guidePath = path;
-    guideLength = path.length;
-  }
-
-  function resize() {
-    const rect = canvas.getBoundingClientRect();
-    width = Math.max(300, Math.floor(rect.width));
-    height = Math.max(300, Math.floor(rect.height));
-    const dpr = Math.min(window.devicePixelRatio || 1, dprMax);
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    fabricRect = {
-      x: width * 0.12,
-      y: height * 0.16,
-      w: width * 0.76,
-      h: height * 0.68,
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const values = {
+      garment: String(formData.get("garment") || ""),
+      material: String(formData.get("material") || ""),
+      repair: String(formData.get("repair") || ""),
+      urgency: String(formData.get("urgency") || ""),
     };
 
-    buildGuidePath();
-
-    if (needle.x === 0 && needle.y === 0) {
-      needle.x = fabricRect.x + fabricRect.w * 0.5;
-      needle.y = fabricRect.y + fabricRect.h * 0.5;
-      needle.tx = needle.x;
-      needle.ty = needle.y;
-    }
-  }
-
-  function isInsideFabric(x, y) {
-    return x >= fabricRect.x && x <= fabricRect.x + fabricRect.w && y >= fabricRect.y && y <= fabricRect.y + fabricRect.h;
-  }
-
-  function canvasPoint(event) {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-    };
-  }
-
-  function drawBackground(now) {
-    const table = ctx.createLinearGradient(0, 0, width, height);
-    table.addColorStop(0, "#deccb6");
-    table.addColorStop(0.5, "#ceb79c");
-    table.addColorStop(1, "#ba9e80");
-    ctx.fillStyle = table;
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.save();
-    ctx.globalAlpha = 0.05;
-    ctx.fillStyle = "#ffffff";
-    for (let y = 10; y < height; y += 20) {
-      for (let x = (y % 30) * 0.5; x < width; x += 26) {
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-    ctx.restore();
-
-    const g = ctx.createLinearGradient(fabricRect.x, fabricRect.y, fabricRect.x + fabricRect.w, fabricRect.y + fabricRect.h);
-    g.addColorStop(0, "#d8cebf");
-    g.addColorStop(1, "#c6b9a8");
-    ctx.fillStyle = g;
-    ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
-
-    ctx.strokeStyle = "rgba(28, 28, 28, 0.17)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(fabricRect.x + 0.5, fabricRect.y + 0.5, fabricRect.w - 1, fabricRect.h - 1);
-
-    ctx.save();
-    ctx.globalAlpha = 0.04;
-    ctx.strokeStyle = "#ffffff";
-    for (let i = 0; i < 22; i += 1) {
-      const x = fabricRect.x + (i / 22) * fabricRect.w;
-      ctx.beginPath();
-      ctx.moveTo(x, fabricRect.y);
-      ctx.lineTo(x - 32, fabricRect.y + fabricRect.h);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.save();
-    const pulse = 0.24 + Math.sin(now * 0.0014) * 0.07;
-    ctx.globalAlpha = points.length > 2 ? 0.14 : pulse;
-    ctx.strokeStyle = "rgba(58, 42, 30, 0.65)";
-    ctx.setLineDash([6, 8]);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    if (guidePath[0]) {
-      ctx.moveTo(guidePath[0].x, guidePath[0].y);
-      for (let i = 1; i < guidePath.length; i += 1) {
-        ctx.lineTo(guidePath[i].x, guidePath[i].y);
-      }
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    if (isComplete) {
-      completePulse = clamp(completePulse + 0.05, 0, 1);
-    } else {
-      completePulse = clamp(completePulse - 0.04, 0, 1);
-    }
-
-    if (completePulse > 0.01) {
-      ctx.save();
-      ctx.globalAlpha = completePulse * 0.18;
-      const shine = ctx.createLinearGradient(fabricRect.x, fabricRect.y, fabricRect.x + fabricRect.w, fabricRect.y);
-      shine.addColorStop(0, "rgba(214, 198, 165, 0)");
-      shine.addColorStop(0.5, "rgba(214, 198, 165, 0.95)");
-      shine.addColorStop(1, "rgba(214, 198, 165, 0)");
-      ctx.fillStyle = shine;
-      ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
-      ctx.restore();
-    }
-
-    const interactionPulse = pointerDown ? 1 : glow;
-    if (interactionPulse > 0.01) {
-      ctx.save();
-      ctx.globalAlpha = 0.06 + interactionPulse * 0.06;
-      const cinematic = ctx.createLinearGradient(0, 0, width, height);
-      cinematic.addColorStop(0, "rgba(255,255,255,0.45)");
-      cinematic.addColorStop(0.4, "rgba(255,255,255,0.08)");
-      cinematic.addColorStop(1, "rgba(58,42,30,0.18)");
-      ctx.fillStyle = cinematic;
-      ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
-      ctx.restore();
-    }
-  }
-
-  function drawThread() {
-    if (points.length < 2) return;
-
-    const threadMode = threadModes[currentThread];
-
-    ctx.save();
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.strokeStyle = threadMode.shadow;
-    ctx.lineWidth = threadMode.thickness + 1.6;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x + 1, points[0].y + 1.5);
-    for (let i = 1; i < points.length; i += 1) {
-      const a = points[i - 1];
-      const b = points[i];
-      const cx = (a.x + b.x) / 2;
-      const cy = (a.y + b.y) / 2;
-      ctx.quadraticCurveTo(a.x, a.y, cx, cy);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = threadMode.color;
-    ctx.lineWidth = threadMode.thickness;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i += 1) {
-      const a = points[i - 1];
-      const b = points[i];
-      const cx = (a.x + b.x) / 2;
-      const cy = (a.y + b.y) / 2;
-      ctx.quadraticCurveTo(a.x, a.y, cx, cy);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = threadMode.shine;
-    ctx.lineWidth = Math.max(1, threadMode.thickness * 0.46);
-    ctx.beginPath();
-    ctx.moveTo(points[0].x - 0.4, points[0].y - 0.8);
-    for (let i = 1; i < points.length; i += 1) {
-      const a = points[i - 1];
-      const b = points[i];
-      const cx = (a.x + b.x) / 2;
-      const cy = (a.y + b.y) / 2;
-      ctx.quadraticCurveTo(a.x, a.y - 0.8, cx, cy - 0.8);
-    }
-    ctx.stroke();
-
-    ctx.restore();
-
-    const stitchSpacing = threadMode.stitchLen;
-    for (let i = 1; i < points.length; i += 1) {
-      const a = points[i - 1];
-      const b = points[i];
-      const segment = Math.hypot(b.x - a.x, b.y - a.y);
-      if (segment < stitchSpacing * 0.75) continue;
-
-      const angle = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2;
-      const len = threadMode.thickness > 2.5 ? 6.5 : 5.5;
-
-      ctx.strokeStyle = "rgba(28, 28, 28, 0.58)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(mx - Math.cos(angle) * len, my - Math.sin(angle) * len);
-      ctx.lineTo(mx + Math.cos(angle) * len, my + Math.sin(angle) * len);
-      ctx.stroke();
-    }
-  }
-
-  function drawNeedle() {
-    const threadMode = threadModes[currentThread];
-    const dx = needle.tx - needle.x;
-    const dy = needle.ty - needle.y;
-    needle.x += dx * threadMode.inertia;
-    needle.y += dy * threadMode.inertia;
-    needle.angle = Math.atan2(dy, dx || 0.0001);
-
-    if (pointerDown) {
-      needle.depth = clamp(needle.depth + 0.12, 0, 1);
-    } else {
-      needle.depth = clamp(needle.depth - 0.09, 0, 1);
-    }
-
-    const puncture = Math.sin(performance.now() * 0.04) * 2.8 * needle.depth;
-
-    ctx.save();
-    ctx.translate(needle.x, needle.y + puncture);
-    ctx.rotate(needle.angle);
-
-    ctx.strokeStyle = "rgba(192, 192, 192, 0.92)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-20, 0);
-    ctx.lineTo(24 + needle.depth * 1.2, 0);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(214, 198, 165, 0.95)";
-    ctx.beginPath();
-    ctx.arc(-18, 0, 2.7, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(28, 28, 28, 0.45)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(-18, 0, 4.3, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.restore();
-
-    if (pointerDown) {
-      glow = clamp(glow + 0.08, 0, 1);
-    } else {
-      glow = clamp(glow - 0.05, 0, 1);
-    }
-
-    if (glow > 0.01) {
-      ctx.save();
-      ctx.globalAlpha = glow * 0.2;
-      const radial = ctx.createRadialGradient(needle.x, needle.y, 4, needle.x, needle.y, 34);
-      radial.addColorStop(0, "rgba(214, 198, 165, 0.95)");
-      radial.addColorStop(1, "rgba(214, 198, 165, 0)");
-      ctx.fillStyle = radial;
-      ctx.beginPath();
-      ctx.arc(needle.x, needle.y, 34, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  function render(now) {
-    drawBackground(now);
-    drawThread();
-    drawNeedle();
-    raf = requestAnimationFrame(render);
-  }
-
-  function distanceToSegment(px, py, ax, ay, bx, by) {
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px - ax;
-    const apy = py - ay;
-    const lenSq = abx * abx + aby * aby || 1;
-    const t = clamp((apx * abx + apy * aby) / lenSq, 0, 1);
-    const qx = ax + abx * t;
-    const qy = ay + aby * t;
-    return Math.hypot(px - qx, py - qy);
-  }
-
-  function nearestGuideDistance(point) {
-    let best = Infinity;
-    for (let i = 1; i < guidePath.length; i += 1) {
-      const a = guidePath[i - 1];
-      const b = guidePath[i];
-      const d = distanceToSegment(point.x, point.y, a.x, a.y, b.x, b.y);
-      if (d < best) best = d;
-    }
-    return best;
-  }
-
-  function nearestGuidePoint(point) {
-    let best = { x: point.x, y: point.y, d: Infinity };
-    for (let i = 1; i < guidePath.length; i += 1) {
-      const a = guidePath[i - 1];
-      const b = guidePath[i];
-      const abx = b.x - a.x;
-      const aby = b.y - a.y;
-      const apx = point.x - a.x;
-      const apy = point.y - a.y;
-      const lenSq = abx * abx + aby * aby || 1;
-      const t = clamp((apx * abx + apy * aby) / lenSq, 0, 1);
-      const qx = a.x + abx * t;
-      const qy = a.y + aby * t;
-      const d = Math.hypot(point.x - qx, point.y - qy);
-      if (d < best.d) best = { x: qx, y: qy, d };
-    }
-    return best;
-  }
-
-  function updatePrecisionAndFeedback() {
-    if (points.length < 3) {
-      precision = 100;
-      updateScore();
-      setFeedbackDebounced("intro", "Volg de gidslijn voor couture-precisie.");
-      isComplete = false;
-      studio.classList.remove("is-complete");
-      completeCard.classList.remove("is-visible");
+    if (!values.garment || !values.material || !values.repair || !values.urgency) {
+      result.textContent = "Vul alle velden in voor een betrouwbare eerste inschatting.";
       return;
     }
 
-    let total = 0;
-    for (const point of points) {
-      total += nearestGuideDistance(point);
-    }
-    const averageError = total / points.length;
-    precision = clamp(100 - averageError * 3.2, 58, 100);
-    updateScore();
+    const complexity =
+      (garmentScore[values.garment] || 1) +
+      (materialScore[values.material] || 1) +
+      (repairScore[values.repair] || 1) +
+      (urgencyScore[values.urgency] || 0);
 
-    const firstGuide = guidePath[0];
-    const lastGuide = guidePath[guidePath.length - 1];
-    const startDist = Math.hypot(points[0].x - firstGuide.x, points[0].y - firstGuide.y);
-    const endDist = Math.hypot(points[points.length - 1].x - lastGuide.x, points[points.length - 1].y - lastGuide.y);
-
-    isComplete = points.length > 28 && startDist < 28 && endDist < 28;
-    if (isComplete) {
-      studio.classList.add("is-complete");
-      if (precision > 90) setFeedbackDebounced("complete-hi", "Patroon voltooid. Uitzonderlijk nette afwerking.");
-      else if (precision > 80) setFeedbackDebounced("complete-mid", "Patroon voltooid. Zeer nette afwerking.");
-      else setFeedbackDebounced("complete-low", "Patroon voltooid. Mooie basis, nog strakker mogelijk.");
-
-      completeScore.textContent = `${Math.round(precision)}%`;
-      if (precision > 92) completeNote.textContent = "Couture-precisie bereikt.";
-      else if (precision > 84) completeNote.textContent = "Sterke atelier-afwerking.";
-      else completeNote.textContent = "Goede basis voor verdere verfijning.";
-      completeCard.classList.add("is-visible");
-      return;
+    if (complexity >= 8) {
+      result.textContent = "Dit lijkt specialistisch herstel. Ons atelier kan dit zeer waarschijnlijk beoordelen met maatwerkadvies en zorgvuldige planning.";
+    } else if (complexity >= 6) {
+      result.textContent = "Dit herstel valt waarschijnlijk binnen ons specialistisch werk. We adviseren een beoordeling om materiaal, pasvorm en afwerking exact te bepalen.";
+    } else {
+      result.textContent = "Dit lijkt goed beoordeelbaar als regulier herstel of verfijning. Met een korte intake kunnen we snel een passende aanpak voorstellen.";
     }
 
-    studio.classList.remove("is-complete");
-    completeCard.classList.remove("is-visible");
-    if (precision > 92) setFeedbackDebounced("high", "Uitstekende spanning en lijncontrole.");
-    else if (precision > 84) setFeedbackDebounced("mid-high", "Sterk naaiwerk. Houd dit ritme vast.");
-    else if (precision > 74) setFeedbackDebounced("mid", "Goede richting. Werk met kleinere bewegingen.");
-    else setFeedbackDebounced("low", "Nog te los. Volg de gidslijn rustiger.");
-  }
-
-  function addPoint(x, y) {
-    let limitedX = clamp(x, fabricRect.x + 4, fabricRect.x + fabricRect.w - 4);
-    let limitedY = clamp(y, fabricRect.y + 4, fabricRect.y + fabricRect.h - 4);
-
-    if (assistEnabled) {
-      const nearest = nearestGuidePoint({ x: limitedX, y: limitedY });
-      if (nearest.d < 24) {
-        const magnet = clamp(1 - nearest.d / 24, 0, 1) * 0.55;
-        limitedX = limitedX + (nearest.x - limitedX) * magnet;
-        limitedY = limitedY + (nearest.y - limitedY) * magnet;
-      }
-    }
-
-    const lastPoint = points[points.length - 1];
-    if (!lastPoint) {
-      points.push({ x: limitedX, y: limitedY });
-      updateCount();
-      updatePrecisionAndFeedback();
-      return;
-    }
-
-    const dx = limitedX - lastPoint.x;
-    const dy = limitedY - lastPoint.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 9) {
-      points.push({ x: limitedX, y: limitedY });
-      if (points.length > 180) {
-        points = points.slice(points.length - 180);
-      }
-      updateCount();
-      updatePrecisionAndFeedback();
-    }
-  }
-
-  function pointerMove(event) {
-    const p = canvasPoint(event);
-    needle.tx = p.x;
-    needle.ty = p.y;
-
-    if (pointerDown && isInsideFabric(p.x, p.y)) {
-      addPoint(p.x, p.y);
-    }
-  }
-
-  function pointerDownHandler(event) {
-    const p = canvasPoint(event);
-    pointerDown = true;
-    canvas.classList.add("is-sewing");
-    needle.tx = p.x;
-    needle.ty = p.y;
-
-    if (isInsideFabric(p.x, p.y)) {
-      addPoint(p.x, p.y);
-    }
-  }
-
-  function pointerUpHandler() {
-    pointerDown = false;
-    canvas.classList.remove("is-sewing");
-  }
-
-  function pointerLeaveHandler() {
-    pointerDown = false;
-    canvas.classList.remove("is-sewing");
-  }
-
-  function resetThread() {
-    points = [];
-    isComplete = false;
-    completeCard.classList.remove("is-visible");
-    updateCount();
-    updatePrecisionAndFeedback();
-  }
-
-  function undoThread() {
-    if (points.length < 2) return;
-    points = points.slice(0, Math.max(0, points.length - 12));
-    updateCount();
-    updatePrecisionAndFeedback();
-  }
-
-  function handlePatternChange() {
-    currentPattern = patternSelect.value;
-    buildGuidePath();
-    points = [];
-    isComplete = false;
-    completeCard.classList.remove("is-visible");
-    updateCount();
-    setFeedbackDebounced("pattern", `Patroon: ${patternLabels[currentPattern]}. Volg de gidslijn.`);
-    updatePrecisionAndFeedback();
-  }
-
-  function handleThreadChange() {
-    currentThread = threadSelect.value;
-    setFeedbackDebounced("thread", `Draad gewijzigd naar ${threadSelect.options[threadSelect.selectedIndex].text.toLowerCase()}.`);
-    updatePrecisionAndFeedback();
-  }
-
-  function handleAssistToggle() {
-    assistEnabled = !assistEnabled;
-    assistToggle.setAttribute("aria-pressed", String(assistEnabled));
-    assistToggle.textContent = assistEnabled ? "Aan" : "Uit";
-    setFeedbackDebounced("assist", assistEnabled ? "Assist actief. Naald helpt subtiel naar de gidslijn." : "Assist uit. Volledig handmatig naaiwerk.");
-  }
-
-  function start() {
-    if (running) return;
-    running = true;
-    raf = requestAnimationFrame(render);
-  }
-
-  function stop() {
-    if (!running) return;
-    running = false;
-    cancelAnimationFrame(raf);
-  }
-
-  resize();
-  updateCount();
-  updateScore();
-  updatePrecisionAndFeedback();
-  canvas.addEventListener("pointermove", pointerMove);
-  canvas.addEventListener("pointerdown", pointerDownHandler);
-  canvas.addEventListener("pointerup", pointerUpHandler);
-  canvas.addEventListener("pointerleave", pointerLeaveHandler);
-  window.addEventListener("pointerup", pointerUpHandler);
-  window.addEventListener("resize", resize);
-  resetButton.addEventListener("click", resetThread);
-  undoButton.addEventListener("click", undoThread);
-  patternSelect.addEventListener("change", handlePatternChange);
-  threadSelect.addEventListener("change", handleThreadChange);
-  assistToggle.addEventListener("click", handleAssistToggle);
-
-  if ("IntersectionObserver" in window && !reduceMotion) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) start();
-          else stop();
-        });
-      },
-      { threshold: 0.16 }
-    );
-    observer.observe(section);
-  } else {
-    start();
-  }
+    cta.href = encodeQuery(values);
+  });
 }
 
 function clamp(value, min, max) {
@@ -1222,5 +687,5 @@ function initFabricEngine() {
 
 initReveal();
 initAtmosphere();
-initHeroStitchStudio();
+initHeroAssessment();
 initFabricEngine();
