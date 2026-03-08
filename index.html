@@ -45,12 +45,17 @@
             <a class="btn btn--ghost" href="#services">Bekijk ons vakmanschap</a>
           </div>
         </div>
-        <figure class="hero__visual reveal reveal--delay" aria-hidden="true">
-          <div class="atelier-plate parallax-item" data-depth="6">
-            <div class="atelier-plate__needle"></div>
-            <div class="atelier-plate__thread"></div>
-            <div class="atelier-plate__cloth"></div>
-            <div class="atelier-plate__light"></div>
+        <figure class="hero__visual reveal reveal--delay">
+          <div class="stitch-studio parallax-item" data-depth="4" role="group" aria-label="Interactieve naai visual">
+            <div class="stitch-studio__header">
+              <p class="stitch-studio__title">Atelier Interactie</p>
+              <p class="stitch-studio__hint">Klik en sleep om zelf een steeklijn te zetten.</p>
+            </div>
+            <canvas id="hero-stitch-canvas" aria-label="Interactieve stof om op te naaien" role="img"></canvas>
+            <div class="stitch-studio__footer">
+              <p class="stitch-studio__count">Steken: <span id="hero-stitch-count">0</span></p>
+              <button id="hero-stitch-reset" class="stitch-studio__reset" type="button">Opnieuw</button>
+            </div>
           </div>
         </figure>
       </div>

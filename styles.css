@@ -250,60 +250,85 @@ a {
   transform: scaleX(1);
 }
 
-.atelier-plate {
+.stitch-studio {
   position: relative;
-  min-height: 540px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid rgba(28, 28, 28, 0.14);
   background:
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.28), transparent 34%),
-    linear-gradient(165deg, #e9dece, #d8c8b2 48%, #c5b39d);
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.34), transparent 34%),
+    linear-gradient(165deg, #e8ddcd, #d7c5ae 44%, #c4b097);
   box-shadow: var(--shadow-deep);
-  transition: transform 380ms var(--ease-lux), box-shadow 380ms var(--ease-lux);
+  transition: transform 360ms var(--ease-lux), box-shadow 360ms var(--ease-lux);
 }
 
-.atelier-plate:hover {
+.stitch-studio:hover {
   transform: translateY(-5px);
 }
 
-.atelier-plate__cloth,
-.atelier-plate__light,
-.atelier-plate__thread,
-.atelier-plate__needle {
+.stitch-studio__header,
+.stitch-studio__footer {
   position: absolute;
+  left: 1rem;
+  right: 1rem;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
 }
 
-.atelier-plate__cloth {
-  inset: 28% 12% 11% 34%;
-  border-radius: 20px;
-  background:
-    linear-gradient(140deg, rgba(38, 35, 30, 0.22), rgba(38, 35, 30, 0.08)),
-    repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07) 1px, transparent 1px, transparent 10px);
-  transform: rotate(-4deg);
+.stitch-studio__header {
+  top: 1rem;
 }
 
-.atelier-plate__thread {
-  top: 22%;
-  left: 5%;
-  width: 78%;
-  height: 38%;
-  border-top: 1px dashed rgba(28, 28, 28, 0.48);
-  border-radius: 100% 0 0 0;
+.stitch-studio__footer {
+  bottom: 1rem;
 }
 
-.atelier-plate__needle {
-  width: 118px;
-  height: 2px;
-  left: 48%;
-  bottom: 33%;
-  transform: rotate(-24deg);
-  background: linear-gradient(90deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 1));
+.stitch-studio__title,
+.stitch-studio__count {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(28, 28, 28, 0.8);
 }
 
-.atelier-plate__light {
-  inset: 8% 14%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.35), transparent 62%);
+.stitch-studio__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(58, 42, 30, 0.86);
+  text-align: right;
+}
+
+#hero-stitch-canvas {
+  display: block;
+  width: 100%;
+  height: 560px;
+  cursor: crosshair;
+}
+
+#hero-stitch-canvas.is-sewing {
+  cursor: none;
+}
+
+.stitch-studio__reset {
+  border: 1px solid rgba(28, 28, 28, 0.28);
+  background: rgba(249, 245, 236, 0.88);
+  color: var(--ink);
+  min-height: 34px;
+  padding: 0.35rem 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: transform 220ms var(--ease-lux), background-color 220ms var(--ease-lux);
+}
+
+.stitch-studio__reset:hover,
+.stitch-studio__reset:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .thread-divider {
@@ -677,8 +702,18 @@ a {
     order: -1;
   }
 
-  .atelier-plate {
-    min-height: 370px;
+  #hero-stitch-canvas {
+    height: 400px;
+  }
+
+  .stitch-studio__header,
+  .stitch-studio__footer {
+    left: 0.8rem;
+    right: 0.8rem;
+  }
+
+  .stitch-studio__hint {
+    max-width: 180px;
   }
 
   .services-layout {
@@ -717,6 +752,21 @@ a {
     font-size: 0.84rem;
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  #hero-stitch-canvas {
+    height: 340px;
+  }
+
+  .stitch-studio__header,
+  .stitch-studio__footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .stitch-studio__hint {
+    text-align: left;
   }
 }
 

@@ -49,6 +49,337 @@ function initAtmosphere() {
   });
 }
 
+function initHeroStitchStudio() {
+  const section = document.querySelector("#hero");
+  const canvas = document.querySelector("#hero-stitch-canvas");
+  const resetButton = document.querySelector("#hero-stitch-reset");
+  const countNode = document.querySelector("#hero-stitch-count");
+
+  if (!section || !canvas || !resetButton || !countNode) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const dprMax = 2;
+  let width = 0;
+  let height = 0;
+  let running = false;
+  let raf = 0;
+  let pointerDown = false;
+  let points = [];
+  let needle = { x: 0, y: 0, tx: 0, ty: 0, angle: 0 };
+  let fabricRect = { x: 0, y: 0, w: 0, h: 0 };
+  let glow = 0;
+
+  function updateCount() {
+    countNode.textContent = String(Math.max(0, points.length - 1));
+  }
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    width = Math.max(300, Math.floor(rect.width));
+    height = Math.max(300, Math.floor(rect.height));
+    const dpr = Math.min(window.devicePixelRatio || 1, dprMax);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    fabricRect = {
+      x: width * 0.12,
+      y: height * 0.16,
+      w: width * 0.76,
+      h: height * 0.68,
+    };
+
+    if (needle.x === 0 && needle.y === 0) {
+      needle.x = fabricRect.x + fabricRect.w * 0.5;
+      needle.y = fabricRect.y + fabricRect.h * 0.5;
+      needle.tx = needle.x;
+      needle.ty = needle.y;
+    }
+  }
+
+  function isInsideFabric(x, y) {
+    return x >= fabricRect.x && x <= fabricRect.x + fabricRect.w && y >= fabricRect.y && y <= fabricRect.y + fabricRect.h;
+  }
+
+  function canvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  function drawBackground(now) {
+    const table = ctx.createLinearGradient(0, 0, width, height);
+    table.addColorStop(0, "#deccb6");
+    table.addColorStop(0.5, "#ceb79c");
+    table.addColorStop(1, "#ba9e80");
+    ctx.fillStyle = table;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = "#ffffff";
+    for (let y = 10; y < height; y += 20) {
+      for (let x = (y % 30) * 0.5; x < width; x += 26) {
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    ctx.restore();
+
+    const g = ctx.createLinearGradient(fabricRect.x, fabricRect.y, fabricRect.x + fabricRect.w, fabricRect.y + fabricRect.h);
+    g.addColorStop(0, "#d8cebf");
+    g.addColorStop(1, "#c6b9a8");
+    ctx.fillStyle = g;
+    ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
+
+    ctx.strokeStyle = "rgba(28, 28, 28, 0.17)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(fabricRect.x + 0.5, fabricRect.y + 0.5, fabricRect.w - 1, fabricRect.h - 1);
+
+    ctx.save();
+    ctx.globalAlpha = 0.04;
+    ctx.strokeStyle = "#ffffff";
+    for (let i = 0; i < 22; i += 1) {
+      const x = fabricRect.x + (i / 22) * fabricRect.w;
+      ctx.beginPath();
+      ctx.moveTo(x, fabricRect.y);
+      ctx.lineTo(x - 32, fabricRect.y + fabricRect.h);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    if (points.length < 2) {
+      ctx.save();
+      ctx.globalAlpha = 0.26 + Math.sin(now * 0.0014) * 0.08;
+      ctx.strokeStyle = "rgba(58, 42, 30, 0.6)";
+      ctx.setLineDash([6, 7]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(fabricRect.x + fabricRect.w * 0.2, fabricRect.y + fabricRect.h * 0.52);
+      ctx.bezierCurveTo(
+        fabricRect.x + fabricRect.w * 0.38,
+        fabricRect.y + fabricRect.h * 0.34,
+        fabricRect.x + fabricRect.w * 0.62,
+        fabricRect.y + fabricRect.h * 0.68,
+        fabricRect.x + fabricRect.w * 0.8,
+        fabricRect.y + fabricRect.h * 0.5
+      );
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawThread() {
+    if (points.length < 2) return;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.strokeStyle = "rgba(32, 28, 24, 0.26)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x + 1, points[0].y + 1.5);
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const cx = (a.x + b.x) / 2;
+      const cy = (a.y + b.y) / 2;
+      ctx.quadraticCurveTo(a.x, a.y, cx, cy);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = "#d9d0c4";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const cx = (a.x + b.x) / 2;
+      const cy = (a.y + b.y) / 2;
+      ctx.quadraticCurveTo(a.x, a.y, cx, cy);
+    }
+    ctx.stroke();
+
+    ctx.restore();
+
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const angle = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const len = 6;
+
+      ctx.strokeStyle = "rgba(28, 28, 28, 0.58)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mx - Math.cos(angle) * len, my - Math.sin(angle) * len);
+      ctx.lineTo(mx + Math.cos(angle) * len, my + Math.sin(angle) * len);
+      ctx.stroke();
+    }
+  }
+
+  function drawNeedle() {
+    const dx = needle.tx - needle.x;
+    const dy = needle.ty - needle.y;
+    needle.x += dx * 0.22;
+    needle.y += dy * 0.22;
+    needle.angle = Math.atan2(dy, dx || 0.0001);
+
+    ctx.save();
+    ctx.translate(needle.x, needle.y);
+    ctx.rotate(needle.angle);
+
+    ctx.strokeStyle = "rgba(192, 192, 192, 0.92)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.lineTo(24, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(214, 198, 165, 0.95)";
+    ctx.beginPath();
+    ctx.arc(-18, 0, 2.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(28, 28, 28, 0.45)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(-18, 0, 4.3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+
+    if (pointerDown) {
+      glow = clamp(glow + 0.08, 0, 1);
+    } else {
+      glow = clamp(glow - 0.05, 0, 1);
+    }
+
+    if (glow > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = glow * 0.2;
+      const radial = ctx.createRadialGradient(needle.x, needle.y, 4, needle.x, needle.y, 34);
+      radial.addColorStop(0, "rgba(214, 198, 165, 0.95)");
+      radial.addColorStop(1, "rgba(214, 198, 165, 0)");
+      ctx.fillStyle = radial;
+      ctx.beginPath();
+      ctx.arc(needle.x, needle.y, 34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function render(now) {
+    drawBackground(now);
+    drawThread();
+    drawNeedle();
+    raf = requestAnimationFrame(render);
+  }
+
+  function addPoint(x, y) {
+    const limitedX = clamp(x, fabricRect.x + 4, fabricRect.x + fabricRect.w - 4);
+    const limitedY = clamp(y, fabricRect.y + 4, fabricRect.y + fabricRect.h - 4);
+
+    const lastPoint = points[points.length - 1];
+    if (!lastPoint) {
+      points.push({ x: limitedX, y: limitedY });
+      updateCount();
+      return;
+    }
+
+    const dx = limitedX - lastPoint.x;
+    const dy = limitedY - lastPoint.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 9) {
+      points.push({ x: limitedX, y: limitedY });
+      if (points.length > 180) {
+        points = points.slice(points.length - 180);
+      }
+      updateCount();
+    }
+  }
+
+  function pointerMove(event) {
+    const p = canvasPoint(event);
+    needle.tx = p.x;
+    needle.ty = p.y;
+
+    if (pointerDown && isInsideFabric(p.x, p.y)) {
+      addPoint(p.x, p.y);
+    }
+  }
+
+  function pointerDownHandler(event) {
+    const p = canvasPoint(event);
+    pointerDown = true;
+    canvas.classList.add("is-sewing");
+    needle.tx = p.x;
+    needle.ty = p.y;
+
+    if (isInsideFabric(p.x, p.y)) {
+      addPoint(p.x, p.y);
+    }
+  }
+
+  function pointerUpHandler() {
+    pointerDown = false;
+    canvas.classList.remove("is-sewing");
+  }
+
+  function pointerLeaveHandler() {
+    pointerDown = false;
+    canvas.classList.remove("is-sewing");
+  }
+
+  function resetThread() {
+    points = [];
+    updateCount();
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    raf = requestAnimationFrame(render);
+  }
+
+  function stop() {
+    if (!running) return;
+    running = false;
+    cancelAnimationFrame(raf);
+  }
+
+  resize();
+  updateCount();
+  canvas.addEventListener("pointermove", pointerMove);
+  canvas.addEventListener("pointerdown", pointerDownHandler);
+  canvas.addEventListener("pointerup", pointerUpHandler);
+  canvas.addEventListener("pointerleave", pointerLeaveHandler);
+  window.addEventListener("pointerup", pointerUpHandler);
+  window.addEventListener("resize", resize);
+  resetButton.addEventListener("click", resetThread);
+
+  if ("IntersectionObserver" in window && !reduceMotion) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) start();
+          else stop();
+        });
+      },
+      { threshold: 0.16 }
+    );
+    observer.observe(section);
+  } else {
+    start();
+  }
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -612,4 +943,5 @@ function initFabricEngine() {
 
 initReveal();
 initAtmosphere();
+initHeroStitchStudio();
 initFabricEngine();
