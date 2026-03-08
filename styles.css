@@ -129,6 +129,7 @@ a {
   min-height: min(96vh, 940px);
   display: grid;
   align-items: center;
+  padding: clamp(2.6rem, 5vw, 4rem) 0 clamp(3.2rem, 6vw, 4.8rem);
   background:
     linear-gradient(120deg, rgba(248, 244, 236, 0.76), rgba(245, 241, 232, 0.66)),
     radial-gradient(circle at 82% 22%, rgba(58, 42, 30, 0.2), transparent 40%),
@@ -152,6 +153,17 @@ a {
   grid-template-columns: 1.1fr 0.9fr;
   gap: clamp(1.8rem, 5vw, 4.6rem);
   align-items: center;
+  min-height: clamp(520px, 70vh, 760px);
+}
+
+.hero__copy,
+.hero__visual {
+  align-self: center;
+}
+
+.hero__visual {
+  display: flex;
+  justify-content: center;
 }
 
 .hero__subheadline {
@@ -252,6 +264,8 @@ a {
 
 .stitch-studio {
   position: relative;
+  width: min(100%, 520px);
+  margin-inline: auto;
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid rgba(28, 28, 28, 0.14);
@@ -306,7 +320,7 @@ a {
 #hero-stitch-canvas {
   display: block;
   width: 100%;
-  height: 560px;
+  height: 520px;
   cursor: crosshair;
 }
 
@@ -686,7 +700,7 @@ a {
 @media (max-width: 1020px) {
   .hero {
     min-height: auto;
-    padding-top: 2.4rem;
+    padding: 2.4rem 0 3.4rem;
   }
 
   .hero__grid,
