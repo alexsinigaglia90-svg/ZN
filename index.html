@@ -67,9 +67,18 @@
                     <option value="heavy">Zwaar</option>
                   </select>
                 </label>
+                <label class="stitch-studio__assist">
+                  Assist
+                  <button id="hero-assist-toggle" type="button" aria-pressed="false">Uit</button>
+                </label>
               </div>
             </div>
             <canvas id="hero-stitch-canvas" aria-label="Interactieve stof om op te naaien" role="img"></canvas>
+            <div class="stitch-studio__complete-card" id="hero-complete-card" aria-live="polite">
+              <p class="stitch-studio__complete-label">Afwerking</p>
+              <p class="stitch-studio__complete-score" id="hero-complete-score">94%</p>
+              <p class="stitch-studio__complete-note" id="hero-complete-note">Couture-precisie bereikt.</p>
+            </div>
             <div class="stitch-studio__footer">
               <div class="stitch-studio__meta">
                 <p class="stitch-studio__count">Steken: <span id="hero-stitch-count">0</span></p>

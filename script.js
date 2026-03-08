@@ -59,9 +59,13 @@ function initHeroStitchStudio() {
   const feedbackNode = document.querySelector("#hero-stitch-feedback");
   const patternSelect = document.querySelector("#hero-pattern-select");
   const threadSelect = document.querySelector("#hero-thread-select");
+  const assistToggle = document.querySelector("#hero-assist-toggle");
+  const completeCard = document.querySelector("#hero-complete-card");
+  const completeScore = document.querySelector("#hero-complete-score");
+  const completeNote = document.querySelector("#hero-complete-note");
   const studio = document.querySelector(".stitch-studio");
 
-  if (!section || !canvas || !resetButton || !undoButton || !countNode || !scoreNode || !feedbackNode || !patternSelect || !threadSelect || !studio) return;
+  if (!section || !canvas || !resetButton || !undoButton || !countNode || !scoreNode || !feedbackNode || !patternSelect || !threadSelect || !assistToggle || !completeCard || !completeScore || !completeNote || !studio) return;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -83,6 +87,9 @@ function initHeroStitchStudio() {
   let precision = 100;
   let isComplete = false;
   let completePulse = 0;
+  let assistEnabled = false;
+  let feedbackKey = "";
+  let feedbackTimer = 0;
 
   const threadModes = {
     silk: { color: "#ddd4c8", shine: "rgba(255, 255, 255, 0.75)", shadow: "rgba(26, 22, 19, 0.26)", thickness: 2.2, stitchLen: 10, inertia: 0.22 },
@@ -107,6 +114,15 @@ function initHeroStitchStudio() {
 
   function setFeedback(text) {
     feedbackNode.textContent = text;
+  }
+
+  function setFeedbackDebounced(key, text) {
+    if (feedbackKey === key) return;
+    feedbackKey = key;
+    window.clearTimeout(feedbackTimer);
+    feedbackTimer = window.setTimeout(() => {
+      setFeedback(text);
+    }, 120);
   }
 
   function buildGuidePath() {
@@ -249,6 +265,19 @@ function initHeroStitchStudio() {
       shine.addColorStop(0.5, "rgba(214, 198, 165, 0.95)");
       shine.addColorStop(1, "rgba(214, 198, 165, 0)");
       ctx.fillStyle = shine;
+      ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
+      ctx.restore();
+    }
+
+    const interactionPulse = pointerDown ? 1 : glow;
+    if (interactionPulse > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = 0.06 + interactionPulse * 0.06;
+      const cinematic = ctx.createLinearGradient(0, 0, width, height);
+      cinematic.addColorStop(0, "rgba(255,255,255,0.45)");
+      cinematic.addColorStop(0.4, "rgba(255,255,255,0.08)");
+      cinematic.addColorStop(1, "rgba(58,42,30,0.18)");
+      ctx.fillStyle = cinematic;
       ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
       ctx.restore();
     }
@@ -415,13 +444,33 @@ function initHeroStitchStudio() {
     return best;
   }
 
+  function nearestGuidePoint(point) {
+    let best = { x: point.x, y: point.y, d: Infinity };
+    for (let i = 1; i < guidePath.length; i += 1) {
+      const a = guidePath[i - 1];
+      const b = guidePath[i];
+      const abx = b.x - a.x;
+      const aby = b.y - a.y;
+      const apx = point.x - a.x;
+      const apy = point.y - a.y;
+      const lenSq = abx * abx + aby * aby || 1;
+      const t = clamp((apx * abx + apy * aby) / lenSq, 0, 1);
+      const qx = a.x + abx * t;
+      const qy = a.y + aby * t;
+      const d = Math.hypot(point.x - qx, point.y - qy);
+      if (d < best.d) best = { x: qx, y: qy, d };
+    }
+    return best;
+  }
+
   function updatePrecisionAndFeedback() {
     if (points.length < 3) {
       precision = 100;
       updateScore();
-      setFeedback("Volg de gidslijn voor couture-precisie.");
+      setFeedbackDebounced("intro", "Volg de gidslijn voor couture-precisie.");
       isComplete = false;
       studio.classList.remove("is-complete");
+      completeCard.classList.remove("is-visible");
       return;
     }
 
@@ -441,22 +490,38 @@ function initHeroStitchStudio() {
     isComplete = points.length > 28 && startDist < 28 && endDist < 28;
     if (isComplete) {
       studio.classList.add("is-complete");
-      if (precision > 90) setFeedback("Patroon voltooid. Uitzonderlijk nette afwerking.");
-      else if (precision > 80) setFeedback("Patroon voltooid. Zeer nette afwerking.");
-      else setFeedback("Patroon voltooid. Mooie basis, nog strakker mogelijk.");
+      if (precision > 90) setFeedbackDebounced("complete-hi", "Patroon voltooid. Uitzonderlijk nette afwerking.");
+      else if (precision > 80) setFeedbackDebounced("complete-mid", "Patroon voltooid. Zeer nette afwerking.");
+      else setFeedbackDebounced("complete-low", "Patroon voltooid. Mooie basis, nog strakker mogelijk.");
+
+      completeScore.textContent = `${Math.round(precision)}%`;
+      if (precision > 92) completeNote.textContent = "Couture-precisie bereikt.";
+      else if (precision > 84) completeNote.textContent = "Sterke atelier-afwerking.";
+      else completeNote.textContent = "Goede basis voor verdere verfijning.";
+      completeCard.classList.add("is-visible");
       return;
     }
 
     studio.classList.remove("is-complete");
-    if (precision > 92) setFeedback("Uitstekende spanning en lijncontrole.");
-    else if (precision > 84) setFeedback("Sterk naaiwerk. Houd dit ritme vast.");
-    else if (precision > 74) setFeedback("Goede richting. Werk met kleinere bewegingen.");
-    else setFeedback("Nog te los. Volg de gidslijn rustiger.");
+    completeCard.classList.remove("is-visible");
+    if (precision > 92) setFeedbackDebounced("high", "Uitstekende spanning en lijncontrole.");
+    else if (precision > 84) setFeedbackDebounced("mid-high", "Sterk naaiwerk. Houd dit ritme vast.");
+    else if (precision > 74) setFeedbackDebounced("mid", "Goede richting. Werk met kleinere bewegingen.");
+    else setFeedbackDebounced("low", "Nog te los. Volg de gidslijn rustiger.");
   }
 
   function addPoint(x, y) {
-    const limitedX = clamp(x, fabricRect.x + 4, fabricRect.x + fabricRect.w - 4);
-    const limitedY = clamp(y, fabricRect.y + 4, fabricRect.y + fabricRect.h - 4);
+    let limitedX = clamp(x, fabricRect.x + 4, fabricRect.x + fabricRect.w - 4);
+    let limitedY = clamp(y, fabricRect.y + 4, fabricRect.y + fabricRect.h - 4);
+
+    if (assistEnabled) {
+      const nearest = nearestGuidePoint({ x: limitedX, y: limitedY });
+      if (nearest.d < 24) {
+        const magnet = clamp(1 - nearest.d / 24, 0, 1) * 0.55;
+        limitedX = limitedX + (nearest.x - limitedX) * magnet;
+        limitedY = limitedY + (nearest.y - limitedY) * magnet;
+      }
+    }
 
     const lastPoint = points[points.length - 1];
     if (!lastPoint) {
@@ -513,6 +578,8 @@ function initHeroStitchStudio() {
 
   function resetThread() {
     points = [];
+    isComplete = false;
+    completeCard.classList.remove("is-visible");
     updateCount();
     updatePrecisionAndFeedback();
   }
@@ -528,15 +595,24 @@ function initHeroStitchStudio() {
     currentPattern = patternSelect.value;
     buildGuidePath();
     points = [];
+    isComplete = false;
+    completeCard.classList.remove("is-visible");
     updateCount();
-    setFeedback(`Patroon: ${patternLabels[currentPattern]}. Volg de gidslijn.`);
+    setFeedbackDebounced("pattern", `Patroon: ${patternLabels[currentPattern]}. Volg de gidslijn.`);
     updatePrecisionAndFeedback();
   }
 
   function handleThreadChange() {
     currentThread = threadSelect.value;
-    setFeedback(`Draad gewijzigd naar ${threadSelect.options[threadSelect.selectedIndex].text.toLowerCase()}.`);
+    setFeedbackDebounced("thread", `Draad gewijzigd naar ${threadSelect.options[threadSelect.selectedIndex].text.toLowerCase()}.`);
     updatePrecisionAndFeedback();
+  }
+
+  function handleAssistToggle() {
+    assistEnabled = !assistEnabled;
+    assistToggle.setAttribute("aria-pressed", String(assistEnabled));
+    assistToggle.textContent = assistEnabled ? "Aan" : "Uit";
+    setFeedbackDebounced("assist", assistEnabled ? "Assist actief. Naald helpt subtiel naar de gidslijn." : "Assist uit. Volledig handmatig naaiwerk.");
   }
 
   function start() {
@@ -565,6 +641,7 @@ function initHeroStitchStudio() {
   undoButton.addEventListener("click", undoThread);
   patternSelect.addEventListener("change", handlePatternChange);
   threadSelect.addEventListener("change", handleThreadChange);
+  assistToggle.addEventListener("click", handleAssistToggle);
 
   if ("IntersectionObserver" in window && !reduceMotion) {
     const observer = new IntersectionObserver(
