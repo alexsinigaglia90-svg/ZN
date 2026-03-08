@@ -310,11 +310,48 @@ a {
   color: rgba(28, 28, 28, 0.8);
 }
 
-.stitch-studio__hint {
+.stitch-studio__controls {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.stitch-studio__controls label {
+  display: grid;
+  gap: 0.22rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(58, 42, 30, 0.82);
+}
+
+.stitch-studio__controls select {
+  min-width: 112px;
+  min-height: 30px;
+  border: 1px solid rgba(28, 28, 28, 0.2);
+  background: rgba(248, 241, 229, 0.9);
+  color: var(--ink);
+  font-size: 0.78rem;
+  padding: 0 0.4rem;
+}
+
+.stitch-studio__meta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.stitch-studio__score,
+.stitch-studio__feedback {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: rgba(58, 42, 30, 0.86);
-  text-align: right;
+}
+
+.stitch-studio__feedback {
+  font-size: 0.69rem;
+  max-width: 260px;
 }
 
 #hero-stitch-canvas {
@@ -337,6 +374,15 @@ a {
   font-weight: 600;
   letter-spacing: 0.03em;
   transition: transform 220ms var(--ease-lux), background-color 220ms var(--ease-lux);
+}
+
+.stitch-studio__actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.stitch-studio.is-complete {
+  box-shadow: 0 0 0 1px rgba(214, 198, 165, 0.55), var(--shadow-deep);
 }
 
 .stitch-studio__reset:hover,
@@ -730,6 +776,11 @@ a {
     max-width: 180px;
   }
 
+  .stitch-studio__controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .services-layout {
     grid-template-columns: 1fr;
   }
@@ -779,8 +830,24 @@ a {
     gap: 0.35rem;
   }
 
-  .stitch-studio__hint {
-    text-align: left;
+  .stitch-studio__controls {
+    width: 100%;
+  }
+
+  .stitch-studio__controls label {
+    flex: 1;
+  }
+
+  .stitch-studio__controls select {
+    width: 100%;
+  }
+
+  .stitch-studio__actions {
+    width: 100%;
+  }
+
+  .stitch-studio__reset {
+    flex: 1;
   }
 }
 

@@ -53,9 +53,15 @@ function initHeroStitchStudio() {
   const section = document.querySelector("#hero");
   const canvas = document.querySelector("#hero-stitch-canvas");
   const resetButton = document.querySelector("#hero-stitch-reset");
+  const undoButton = document.querySelector("#hero-stitch-undo");
   const countNode = document.querySelector("#hero-stitch-count");
+  const scoreNode = document.querySelector("#hero-stitch-score");
+  const feedbackNode = document.querySelector("#hero-stitch-feedback");
+  const patternSelect = document.querySelector("#hero-pattern-select");
+  const threadSelect = document.querySelector("#hero-thread-select");
+  const studio = document.querySelector(".stitch-studio");
 
-  if (!section || !canvas || !resetButton || !countNode) return;
+  if (!section || !canvas || !resetButton || !undoButton || !countNode || !scoreNode || !feedbackNode || !patternSelect || !threadSelect || !studio) return;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -67,12 +73,72 @@ function initHeroStitchStudio() {
   let raf = 0;
   let pointerDown = false;
   let points = [];
-  let needle = { x: 0, y: 0, tx: 0, ty: 0, angle: 0 };
+  let needle = { x: 0, y: 0, tx: 0, ty: 0, angle: 0, depth: 0 };
   let fabricRect = { x: 0, y: 0, w: 0, h: 0 };
   let glow = 0;
+  let guidePath = [];
+  let guideLength = 0;
+  let currentPattern = "hem";
+  let currentThread = "silk";
+  let precision = 100;
+  let isComplete = false;
+  let completePulse = 0;
+
+  const threadModes = {
+    silk: { color: "#ddd4c8", shine: "rgba(255, 255, 255, 0.75)", shadow: "rgba(26, 22, 19, 0.26)", thickness: 2.2, stitchLen: 10, inertia: 0.22 },
+    cotton: { color: "#d1c7b7", shine: "rgba(250, 248, 242, 0.62)", shadow: "rgba(24, 22, 18, 0.3)", thickness: 2.5, stitchLen: 11, inertia: 0.2 },
+    technical: { color: "#bcc3cc", shine: "rgba(240, 244, 255, 0.6)", shadow: "rgba(18, 22, 30, 0.35)", thickness: 2.35, stitchLen: 9, inertia: 0.19 },
+    heavy: { color: "#c2b29e", shine: "rgba(242, 230, 215, 0.5)", shadow: "rgba(22, 16, 13, 0.38)", thickness: 2.9, stitchLen: 13, inertia: 0.16 },
+  };
+
+  const patternLabels = {
+    hem: "Rechte zoom",
+    curve: "S-curve",
+    corner: "Hoekafwerking",
+  };
 
   function updateCount() {
     countNode.textContent = String(Math.max(0, points.length - 1));
+  }
+
+  function updateScore() {
+    scoreNode.textContent = `${Math.round(precision)}%`;
+  }
+
+  function setFeedback(text) {
+    feedbackNode.textContent = text;
+  }
+
+  function buildGuidePath() {
+    const path = [];
+    const steps = 56;
+    for (let i = 0; i <= steps; i += 1) {
+      const t = i / steps;
+      if (currentPattern === "hem") {
+        const x = fabricRect.x + fabricRect.w * (0.14 + 0.72 * t);
+        const y = fabricRect.y + fabricRect.h * 0.52;
+        path.push({ x, y });
+      } else if (currentPattern === "curve") {
+        const x = fabricRect.x + fabricRect.w * (0.14 + 0.72 * t);
+        const y = fabricRect.y + fabricRect.h * (0.52 + Math.sin(t * Math.PI * 2) * 0.1);
+        path.push({ x, y });
+      } else {
+        const split = 0.52;
+        if (t <= split) {
+          const local = t / split;
+          const x = fabricRect.x + fabricRect.w * (0.18 + 0.34 * local);
+          const y = fabricRect.y + fabricRect.h * (0.76 - 0.48 * local);
+          path.push({ x, y });
+        } else {
+          const local = (t - split) / (1 - split);
+          const x = fabricRect.x + fabricRect.w * (0.52 + 0.3 * local);
+          const y = fabricRect.y + fabricRect.h * (0.28 + 0.34 * local);
+          path.push({ x, y });
+        }
+      }
+    }
+    guidePath = path;
+    guideLength = path.length;
   }
 
   function resize() {
@@ -90,6 +156,8 @@ function initHeroStitchStudio() {
       w: width * 0.76,
       h: height * 0.68,
     };
+
+    buildGuidePath();
 
     if (needle.x === 0 && needle.y === 0) {
       needle.x = fabricRect.x + fabricRect.w * 0.5;
@@ -151,23 +219,37 @@ function initHeroStitchStudio() {
     }
     ctx.restore();
 
-    if (points.length < 2) {
+    ctx.save();
+    const pulse = 0.24 + Math.sin(now * 0.0014) * 0.07;
+    ctx.globalAlpha = points.length > 2 ? 0.14 : pulse;
+    ctx.strokeStyle = "rgba(58, 42, 30, 0.65)";
+    ctx.setLineDash([6, 8]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (guidePath[0]) {
+      ctx.moveTo(guidePath[0].x, guidePath[0].y);
+      for (let i = 1; i < guidePath.length; i += 1) {
+        ctx.lineTo(guidePath[i].x, guidePath[i].y);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    if (isComplete) {
+      completePulse = clamp(completePulse + 0.05, 0, 1);
+    } else {
+      completePulse = clamp(completePulse - 0.04, 0, 1);
+    }
+
+    if (completePulse > 0.01) {
       ctx.save();
-      ctx.globalAlpha = 0.26 + Math.sin(now * 0.0014) * 0.08;
-      ctx.strokeStyle = "rgba(58, 42, 30, 0.6)";
-      ctx.setLineDash([6, 7]);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(fabricRect.x + fabricRect.w * 0.2, fabricRect.y + fabricRect.h * 0.52);
-      ctx.bezierCurveTo(
-        fabricRect.x + fabricRect.w * 0.38,
-        fabricRect.y + fabricRect.h * 0.34,
-        fabricRect.x + fabricRect.w * 0.62,
-        fabricRect.y + fabricRect.h * 0.68,
-        fabricRect.x + fabricRect.w * 0.8,
-        fabricRect.y + fabricRect.h * 0.5
-      );
-      ctx.stroke();
+      ctx.globalAlpha = completePulse * 0.18;
+      const shine = ctx.createLinearGradient(fabricRect.x, fabricRect.y, fabricRect.x + fabricRect.w, fabricRect.y);
+      shine.addColorStop(0, "rgba(214, 198, 165, 0)");
+      shine.addColorStop(0.5, "rgba(214, 198, 165, 0.95)");
+      shine.addColorStop(1, "rgba(214, 198, 165, 0)");
+      ctx.fillStyle = shine;
+      ctx.fillRect(fabricRect.x, fabricRect.y, fabricRect.w, fabricRect.h);
       ctx.restore();
     }
   }
@@ -175,12 +257,14 @@ function initHeroStitchStudio() {
   function drawThread() {
     if (points.length < 2) return;
 
+    const threadMode = threadModes[currentThread];
+
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    ctx.strokeStyle = "rgba(32, 28, 24, 0.26)";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = threadMode.shadow;
+    ctx.lineWidth = threadMode.thickness + 1.6;
     ctx.beginPath();
     ctx.moveTo(points[0].x + 1, points[0].y + 1.5);
     for (let i = 1; i < points.length; i += 1) {
@@ -192,8 +276,8 @@ function initHeroStitchStudio() {
     }
     ctx.stroke();
 
-    ctx.strokeStyle = "#d9d0c4";
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = threadMode.color;
+    ctx.lineWidth = threadMode.thickness;
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i += 1) {
@@ -205,15 +289,32 @@ function initHeroStitchStudio() {
     }
     ctx.stroke();
 
-    ctx.restore();
-
+    ctx.strokeStyle = threadMode.shine;
+    ctx.lineWidth = Math.max(1, threadMode.thickness * 0.46);
+    ctx.beginPath();
+    ctx.moveTo(points[0].x - 0.4, points[0].y - 0.8);
     for (let i = 1; i < points.length; i += 1) {
       const a = points[i - 1];
       const b = points[i];
+      const cx = (a.x + b.x) / 2;
+      const cy = (a.y + b.y) / 2;
+      ctx.quadraticCurveTo(a.x, a.y - 0.8, cx, cy - 0.8);
+    }
+    ctx.stroke();
+
+    ctx.restore();
+
+    const stitchSpacing = threadMode.stitchLen;
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const segment = Math.hypot(b.x - a.x, b.y - a.y);
+      if (segment < stitchSpacing * 0.75) continue;
+
       const angle = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
-      const len = 6;
+      const len = threadMode.thickness > 2.5 ? 6.5 : 5.5;
 
       ctx.strokeStyle = "rgba(28, 28, 28, 0.58)";
       ctx.lineWidth = 1;
@@ -225,21 +326,30 @@ function initHeroStitchStudio() {
   }
 
   function drawNeedle() {
+    const threadMode = threadModes[currentThread];
     const dx = needle.tx - needle.x;
     const dy = needle.ty - needle.y;
-    needle.x += dx * 0.22;
-    needle.y += dy * 0.22;
+    needle.x += dx * threadMode.inertia;
+    needle.y += dy * threadMode.inertia;
     needle.angle = Math.atan2(dy, dx || 0.0001);
 
+    if (pointerDown) {
+      needle.depth = clamp(needle.depth + 0.12, 0, 1);
+    } else {
+      needle.depth = clamp(needle.depth - 0.09, 0, 1);
+    }
+
+    const puncture = Math.sin(performance.now() * 0.04) * 2.8 * needle.depth;
+
     ctx.save();
-    ctx.translate(needle.x, needle.y);
+    ctx.translate(needle.x, needle.y + puncture);
     ctx.rotate(needle.angle);
 
     ctx.strokeStyle = "rgba(192, 192, 192, 0.92)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-20, 0);
-    ctx.lineTo(24, 0);
+    ctx.lineTo(24 + needle.depth * 1.2, 0);
     ctx.stroke();
 
     ctx.fillStyle = "rgba(214, 198, 165, 0.95)";
@@ -282,6 +392,68 @@ function initHeroStitchStudio() {
     raf = requestAnimationFrame(render);
   }
 
+  function distanceToSegment(px, py, ax, ay, bx, by) {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+    const lenSq = abx * abx + aby * aby || 1;
+    const t = clamp((apx * abx + apy * aby) / lenSq, 0, 1);
+    const qx = ax + abx * t;
+    const qy = ay + aby * t;
+    return Math.hypot(px - qx, py - qy);
+  }
+
+  function nearestGuideDistance(point) {
+    let best = Infinity;
+    for (let i = 1; i < guidePath.length; i += 1) {
+      const a = guidePath[i - 1];
+      const b = guidePath[i];
+      const d = distanceToSegment(point.x, point.y, a.x, a.y, b.x, b.y);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  function updatePrecisionAndFeedback() {
+    if (points.length < 3) {
+      precision = 100;
+      updateScore();
+      setFeedback("Volg de gidslijn voor couture-precisie.");
+      isComplete = false;
+      studio.classList.remove("is-complete");
+      return;
+    }
+
+    let total = 0;
+    for (const point of points) {
+      total += nearestGuideDistance(point);
+    }
+    const averageError = total / points.length;
+    precision = clamp(100 - averageError * 3.2, 58, 100);
+    updateScore();
+
+    const firstGuide = guidePath[0];
+    const lastGuide = guidePath[guidePath.length - 1];
+    const startDist = Math.hypot(points[0].x - firstGuide.x, points[0].y - firstGuide.y);
+    const endDist = Math.hypot(points[points.length - 1].x - lastGuide.x, points[points.length - 1].y - lastGuide.y);
+
+    isComplete = points.length > 28 && startDist < 28 && endDist < 28;
+    if (isComplete) {
+      studio.classList.add("is-complete");
+      if (precision > 90) setFeedback("Patroon voltooid. Uitzonderlijk nette afwerking.");
+      else if (precision > 80) setFeedback("Patroon voltooid. Zeer nette afwerking.");
+      else setFeedback("Patroon voltooid. Mooie basis, nog strakker mogelijk.");
+      return;
+    }
+
+    studio.classList.remove("is-complete");
+    if (precision > 92) setFeedback("Uitstekende spanning en lijncontrole.");
+    else if (precision > 84) setFeedback("Sterk naaiwerk. Houd dit ritme vast.");
+    else if (precision > 74) setFeedback("Goede richting. Werk met kleinere bewegingen.");
+    else setFeedback("Nog te los. Volg de gidslijn rustiger.");
+  }
+
   function addPoint(x, y) {
     const limitedX = clamp(x, fabricRect.x + 4, fabricRect.x + fabricRect.w - 4);
     const limitedY = clamp(y, fabricRect.y + 4, fabricRect.y + fabricRect.h - 4);
@@ -290,6 +462,7 @@ function initHeroStitchStudio() {
     if (!lastPoint) {
       points.push({ x: limitedX, y: limitedY });
       updateCount();
+      updatePrecisionAndFeedback();
       return;
     }
 
@@ -302,6 +475,7 @@ function initHeroStitchStudio() {
         points = points.slice(points.length - 180);
       }
       updateCount();
+      updatePrecisionAndFeedback();
     }
   }
 
@@ -340,6 +514,29 @@ function initHeroStitchStudio() {
   function resetThread() {
     points = [];
     updateCount();
+    updatePrecisionAndFeedback();
+  }
+
+  function undoThread() {
+    if (points.length < 2) return;
+    points = points.slice(0, Math.max(0, points.length - 12));
+    updateCount();
+    updatePrecisionAndFeedback();
+  }
+
+  function handlePatternChange() {
+    currentPattern = patternSelect.value;
+    buildGuidePath();
+    points = [];
+    updateCount();
+    setFeedback(`Patroon: ${patternLabels[currentPattern]}. Volg de gidslijn.`);
+    updatePrecisionAndFeedback();
+  }
+
+  function handleThreadChange() {
+    currentThread = threadSelect.value;
+    setFeedback(`Draad gewijzigd naar ${threadSelect.options[threadSelect.selectedIndex].text.toLowerCase()}.`);
+    updatePrecisionAndFeedback();
   }
 
   function start() {
@@ -356,6 +553,8 @@ function initHeroStitchStudio() {
 
   resize();
   updateCount();
+  updateScore();
+  updatePrecisionAndFeedback();
   canvas.addEventListener("pointermove", pointerMove);
   canvas.addEventListener("pointerdown", pointerDownHandler);
   canvas.addEventListener("pointerup", pointerUpHandler);
@@ -363,6 +562,9 @@ function initHeroStitchStudio() {
   window.addEventListener("pointerup", pointerUpHandler);
   window.addEventListener("resize", resize);
   resetButton.addEventListener("click", resetThread);
+  undoButton.addEventListener("click", undoThread);
+  patternSelect.addEventListener("change", handlePatternChange);
+  threadSelect.addEventListener("change", handleThreadChange);
 
   if ("IntersectionObserver" in window && !reduceMotion) {
     const observer = new IntersectionObserver(
