@@ -2,6 +2,13 @@ const revealElements = document.querySelectorAll('.reveal');
 const heroComposition = document.querySelector('.hero-composition');
 const menuToggle = document.querySelector('.menu-toggle');
 const siteNav = document.querySelector('.site-nav');
+const scrollProgress = document.querySelector('.scroll-progress');
+const sections = document.querySelectorAll('main section[id]');
+const navLinks = siteNav ? siteNav.querySelectorAll('a[href^="#"]') : [];
+
+revealElements.forEach((element, index) => {
+  element.style.setProperty('--reveal-delay', `${Math.min(index * 45, 280)}ms`);
+});
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
@@ -20,6 +27,49 @@ const revealObserver = new IntersectionObserver(
 
 revealElements.forEach((element) => revealObserver.observe(element));
 
+const updateScrollProgress = () => {
+  if (!scrollProgress) {
+    return;
+  }
+
+  const doc = document.documentElement;
+  const scrollTop = doc.scrollTop || document.body.scrollTop;
+  const scrollHeight = doc.scrollHeight - doc.clientHeight;
+  const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+  scrollProgress.style.width = `${Math.min(progress, 100)}%`;
+};
+
+if (sections.length > 0 && navLinks.length > 0) {
+  const sectionObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const id = entry.target.getAttribute('id');
+        if (!id) {
+          return;
+        }
+
+        const matchingLink = siteNav.querySelector(`a[href="#${id}"]`);
+
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-current');
+          navLinks.forEach((link) => link.classList.remove('is-active'));
+          if (matchingLink) {
+            matchingLink.classList.add('is-active');
+          }
+        } else {
+          entry.target.classList.remove('is-current');
+        }
+      });
+    },
+    {
+      threshold: 0.45,
+      rootMargin: '-10% 0px -35% 0px',
+    }
+  );
+
+  sections.forEach((section) => sectionObserver.observe(section));
+}
+
 if (heroComposition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   heroComposition.classList.add('hero-parallax');
 
@@ -31,6 +81,9 @@ if (heroComposition && !window.matchMedia('(prefers-reduced-motion: reduce)').ma
   applyParallax();
   window.addEventListener('scroll', applyParallax, { passive: true });
 }
+
+updateScrollProgress();
+window.addEventListener('scroll', updateScrollProgress, { passive: true });
 
 if (menuToggle && siteNav) {
   menuToggle.addEventListener('click', () => {
